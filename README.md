@@ -121,7 +121,7 @@ Nexy is the core AI feature. Here is how it works technically:
 1. User describes a civic issue with a location (e.g. "potholes near MG Road, Goregaon")
 2. The app extracts the location text and geocodes it using Nominatim (free OpenStreetMap geocoding), with a two-attempt fallback strategy and spelling correction
 3. Once coordinates are resolved, the app queries the Overpass API to fetch real OSM buildings, roads, and amenities within 300m
-4. This real infrastructure data is injected into the Gemini prompt so the AI generates plans that reference actual nearby structures by name — not generic text
+4. This real infrastructure data is injected into the Gemini prompt so the AI generates plans that reference actual nearby structures by name not generic text
 5. A real Google Map centered on the geocoded coordinates is displayed alongside the plan, with OSM feature markers.
 
 ## Roles
@@ -140,7 +140,7 @@ Key features
 
 ## Notes
 
-Push notifications require a real build rather than Expo Go due to Expo SDK 53 restrictions. The Gemini free tier has rate limits and occasional high-demand errors that resolve on retry. The android and ios folders are excluded from this repo since they are auto-generated — run `npx expo prebuild` to regenerate them.
+Push notifications require a real build rather than Expo Go due to Expo SDK 53 restrictions. The Gemini free tier has rate limits and occasional high-demand errors that resolve on retry. The android and ios folders are excluded from this repo since they are auto-generated - run `npx expo prebuild` to regenerate them.
 
 ## License
 MIT
