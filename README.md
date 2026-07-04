@@ -1,10 +1,10 @@
 # Nexora Mobile
 
-Civic complaint platform for field agents and citizens in Mumbai and Maharashtra. Built with React Native, Supabase, and the Nexy Smart City AI Agent.
+Civic complaint platform for field agents and citizens in Mumbai, Delhi, Bangalore, Chennai, Hyderabad, Pune. Built with React Native, Supabase, and the Nexy Smart City AI Agent.
 
 ## Overview
 
-Nexora lets citizens report civic issues — potholes, water leaks, broken streetlights, garbage — with photos and GPS location. Field agents verify, assign, and resolve complaints with before/after photo evidence. The Nexy AI Agent analyses each complaint using real OpenStreetMap infrastructure data and generates a grounded action plan referencing actual nearby streets and buildings, not generic text.
+Nexora lets citizens report civic issues like potholes, water leaks, broken streetlights, garbage — with photos and GPS location. Field agents verify, assign, and resolve complaints with before/after photo evidence. The Nexy AI Agent analyses each complaint using real OpenStreetMap infrastructure data and generates a grounded action plan referencing actual nearby streets and buildings, not generic text.
 
 ## Tech Stack
 
@@ -70,14 +70,73 @@ To build natively for Android:
 npx expo prebuild --platform android
 npx expo run:android
 ```
+## Project structure
 
+```
+src/
+├── components/
+│   ├── ui/                  
+│   ├── BeforeAfterPair.tsx  
+│   ├── CitySwitcherSheet.tsx
+│   ├── CvSuggestionBanner.tsx
+│   ├── InfrastructureMap.tsx 
+│   └── PrescriptionCard.tsx
+├── hooks/
+│   ├── useRealtimeComplaints.ts
+│   └── useSmartCityAgent.ts  
+├── lib/
+│   ├── complaints.ts        
+│   ├── geocode.ts            
+│   ├── geoTo3d.ts            
+│   ├── notifications.ts
+│   ├── offlineQueue.ts
+│   ├── osmContext.ts         
+│   ├── sentry.ts
+│   ├── storage.ts
+│   ├── supabase.ts
+│   ├── syncEngine.ts
+│   └── uploadImage.ts       
+├── navigation/
+│   ├── AppTabs.tsx
+│   ├── AuthNavigator.tsx
+│   └── RootNavigator.tsx
+├── screens/
+│   ├── DashboardScreen.tsx
+│   ├── LoginScreen.tsx
+│   ├── MapScreen.tsx
+│   ├── ProfileScreen.tsx
+│   ├── ReportScreen.tsx
+│   ├── ResolveScreen.tsx
+│   └── SmartCityAgentScreen.tsx
+├── stores/
+│   ├── authStore.ts
+│   └── cityStore.ts
+└── theme/
+    └── tokens.ts             
+```
 ## How the Nexy AI Agent Works
 
-When a user describes an issue with a location, the app geocodes the location text using Nominatim with a two-attempt fallback and basic spelling correction. Once coordinates are resolved, it queries the Overpass API to fetch real OSM buildings, roads, and amenities within 300 metres. That real infrastructure data is injected into the Gemini prompt so the plan references actual nearby structures by name. A Google Map centred on the resolved coordinates is displayed alongside the plan. The agent works both from a specific linked complaint (using saved GPS coordinates) and from the standalone Nexy tab (geocoding from the typed message).
+Nexy is the core AI feature. Here is how it works technically:
+
+1. User describes a civic issue with a location (e.g. "potholes near MG Road, Goregaon")
+2. The app extracts the location text and geocodes it using Nominatim (free OpenStreetMap geocoding), with a two-attempt fallback strategy and spelling correction
+3. Once coordinates are resolved, the app queries the Overpass API to fetch real OSM buildings, roads, and amenities within 300m
+4. This real infrastructure data is injected into the Gemini prompt so the AI generates plans that reference actual nearby structures by name — not generic text
+5. A real Google Map centered on the geocoded coordinates is displayed alongside the plan, with OSM feature markers.
 
 ## Roles
 
-Citizens can report complaints and use the Nexy AI agent. Field agents have full access including the real-time dashboard, the resolve screen with before/after photos, and the AI agent. Switch roles in the Profile tab.
+- Citizen: Can report complaints and use the Nexy AI agent. Cannot see the agent dashboard.
+- Agent: Full access including the real-time complaint dashboard, resolve screen with before/after photos, and AI agent.
+
+Switch roles in the Profile tab.
+
+Key features
+- Real infrastructure context: AI plans reference actual nearby buildings and roads from OpenStreetMap, not invented locations
+- Before/after evidence: Field agents capture photos before and after resolving an issue
+- Multi-city: Supports Mumbai, Delhi, Bangalore, Chennai, Hyderabad, and Pune with city-aware geocoding
+- Real-time dashboard: Complaint list updates live via Supabase Realtime subscriptions
+- Offline-first: Complaints submitted without internet are queued locally and synced automatically when connectivity returns
 
 ## Notes
 
