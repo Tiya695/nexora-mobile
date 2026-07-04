@@ -4,7 +4,7 @@ Civic complaint platform for field agents and citizens in Mumbai, Delhi, Bangalo
 
 ## Overview
 
-Nexora lets citizens report civic issues like potholes, water leaks, broken streetlights, garbage — with photos and GPS location. Field agents verify, assign, and resolve complaints with before/after photo evidence. The Nexy AI Agent analyses each complaint using real OpenStreetMap infrastructure data and generates a grounded action plan referencing actual nearby streets and buildings, not generic text.
+Nexora lets citizens report civic issues like potholes, water leaks, broken streetlights, garbage  with photos and GPS location. Field agents verify, assign, and resolve complaints with before/after photo evidence. The Nexy AI Agent analyses each complaint using real OpenStreetMap infrastructure data and generates a grounded action plan referencing actual nearby streets and buildings, not generic text.
 
 ## Tech Stack
 
