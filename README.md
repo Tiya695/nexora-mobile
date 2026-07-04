@@ -84,5 +84,4 @@ Citizens can report complaints and use the Nexy AI agent. Field agents have full
 Push notifications require a real build rather than Expo Go due to Expo SDK 53 restrictions. The Gemini free tier has rate limits and occasional high-demand errors that resolve on retry. The android and ios folders are excluded from this repo since they are auto-generated — run `npx expo prebuild` to regenerate them.
 
 ## License
-
-MIT — you can use, copy, modify, and distribute this code freely including for commercial use, as long as you keep the original author credit. This is a standard open source licence used for portfolio and collaborative projects.
+MIT
