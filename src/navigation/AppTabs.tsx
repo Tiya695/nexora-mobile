@@ -26,7 +26,7 @@ export function AppTabs() {
           height: 80,
           paddingBottom: 22,
         },
-        tabBarActiveTintColor: colors.purple,
+        tabBarActiveTintColor: colors.gold,
         tabBarInactiveTintColor: colors.text3,
         tabBarLabelStyle: { fontSize: 10, letterSpacing: 1 },
         tabBarIcon: ({ color }) => {

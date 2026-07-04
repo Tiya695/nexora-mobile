@@ -166,17 +166,18 @@ export function DashboardScreen() {
 
       {/* AI Agent Modal */}
       <Modal
-        visible={agentOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setAgentOpen(false)}
-      >
-        <SmartCityAgentScreen
-          onClose={() => setAgentOpen(false)}
-          complaint={selectedComplaint}
-        />
-      </Modal>
-
+  visible={agentOpen}
+  animationType="slide"
+  presentationStyle="pageSheet"
+  onRequestClose={() => setAgentOpen(false)}
+>
+  {selectedComplaint && (
+    <SmartCityAgentScreen
+      onClose={() => setAgentOpen(false)}
+      complaint={selectedComplaint}
+    />
+  )}
+</Modal>
       {/* Resolve Screen Modal */}
       <Modal
         visible={resolveOpen}

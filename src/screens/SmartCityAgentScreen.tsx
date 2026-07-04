@@ -7,6 +7,7 @@ import {
 import { NxText } from '../components/ui/NxText';
 import { colors, spacing } from '../theme/tokens';
 import { useSmartCityAgent } from '../hooks/useSmartCityAgent';
+import { InfrastructureMap } from '../components/InfrastructureMap';
 
 const CATEGORY_CHIPS = [
   { label: '🛣️ Road', value: 'Road' },
@@ -23,25 +24,27 @@ export function SmartCityAgentScreen({
   onClose?: () => void;
   complaint?: any;
 }) {
+  console.log('SmartCityAgentScreen rendered with complaint:', complaint?.id ?? 'NONE');
   const [input, setInput] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { messages, loading, sendMessage } = useSmartCityAgent(complaint);
   const scrollRef = useRef<ScrollView>(null);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
-    const text = input.trim();
-    setInput('');
-    setSelectedCategory(null);
-    await sendMessage(text, complaint);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  };
+  if (!input.trim()) return;
+  const text = input.trim();
+  setInput('');
+  setSelectedCategory(null);
+  console.log('Complaint passed to sendMessage:', JSON.stringify(complaint));
+  await sendMessage(text, complaint);
+  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+};
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <NxText variant="mono" color={colors.teal}>AI ASSISTANT</NxText>
+          <NxText variant="mono" color={colors.gold}>AI ASSISTANT</NxText>
           <NxText variant="h3">🏙️ Nexora Smart Planner</NxText>
         </View>
         {onClose && (
@@ -50,6 +53,7 @@ export function SmartCityAgentScreen({
           </TouchableOpacity>
         )}
       </View>
+      
 
       <KeyboardAvoidingView
         style={styles.bottomArea}
@@ -61,24 +65,37 @@ export function SmartCityAgentScreen({
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
           {messages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[
-                styles.bubble,
-                msg.role === 'user' ? styles.userBubble : styles.agentBubble
-              ]}
-            >
-              <NxText
-                variant="body"
-                color={msg.role === 'user' ? colors.bg : colors.text}
-              >
-                {msg.text}
-              </NxText>
-            </View>
-          ))}
+  <View key={msg.id}>
+    <View
+      style={[
+        styles.bubble,
+        msg.role === 'user' ? styles.userBubble : styles.agentBubble
+      ]}
+    >
+      <NxText
+        variant="body"
+        color={msg.role === 'user' ? colors.bg : colors.text}
+      >
+        {msg.text}
+      </NxText>
+    </View>
+    {msg.latitude && msg.longitude && (
+      <View style={styles.sceneWrapper}>
+        <NxText variant="mono" color={colors.gold} style={styles.sceneLabel}>
+          🏗️ Real nearby infrastructure (Google Maps)
+        </NxText>
+        <InfrastructureMap
+          latitude={msg.latitude}
+          longitude={msg.longitude}
+          features={msg.features}
+        />
+      </View>
+    )}
+  </View>
+))}
           {loading && (
             <View style={styles.agentBubble}>
-              <ActivityIndicator color={colors.teal} size="small" />
+              <ActivityIndicator color={colors.gold} size="small" />
             </View>
           )}
         </ScrollView>
@@ -104,7 +121,7 @@ export function SmartCityAgentScreen({
               >
                 <NxText
                   variant="label"
-                  color={isDisabled ? colors.text3 : colors.purple}
+                  color={isDisabled ? colors.text3 : colors.gold}
                   style={{ fontWeight: '700' }}
                 >
                   {cat.label}
@@ -152,11 +169,13 @@ const styles = StyleSheet.create({
   bottomArea:      { flex: 1, justifyContent: 'flex-end' },
   messagesContent: { padding: spacing.md, gap: 12, flexGrow: 1, justifyContent: 'flex-end' },
   bubble:          { maxWidth: '85%', padding: spacing.md, marginBottom: 4, borderRadius: 16 },
-  userBubble:      { alignSelf: 'flex-end', backgroundColor: colors.purple, borderBottomRightRadius: 4 },
+  userBubble:      { alignSelf: 'flex-end', backgroundColor: colors.gold, borderBottomRightRadius: 4 },
   agentBubble:     {
     alignSelf: 'flex-start', backgroundColor: colors.surface,
     borderBottomLeftRadius: 4, borderWidth: 1, borderColor: colors.border,
   },
+  sceneWrapper:    { marginTop: 8, marginBottom: 8 },
+ sceneLabel:      { marginBottom: 6, fontSize: 10 },
   chipsRow:        {
   borderTopWidth: 1, borderTopColor: colors.border,
   paddingTop: spacing.sm, paddingBottom: spacing.sm,
@@ -164,11 +183,11 @@ const styles = StyleSheet.create({
 },
   chipsContent:    { paddingHorizontal: spacing.md, gap: spacing.sm, alignItems: 'center' },
   chip:            {
-    backgroundColor: 'rgba(155,95,224,0.12)', borderWidth: 1,
-    borderColor: 'rgba(155,95,224,0.4)', borderRadius: 18,
+    backgroundColor: 'rgba(201,168,76,0.12)', borderWidth: 1,
+    borderColor: 'rgba(201,168,76,0.4)', borderRadius: 18,
     paddingHorizontal: 14, paddingVertical: 8,
   },
-  chipSelected:    { backgroundColor: 'rgba(155,95,224,0.3)', borderColor: colors.purple },
+  chipSelected:    { backgroundColor: 'rgba(201,168,76,0.3)', borderColor: colors.gold },
   chipDisabled:    { opacity: 0.35 },
   inputRow:        {
     flexDirection: 'row', padding: spacing.md,
@@ -182,7 +201,7 @@ const styles = StyleSheet.create({
     maxHeight: 100, borderRadius: 8,
   },
   sendBtn:         {
-    backgroundColor: colors.teal, padding: spacing.md,
+    backgroundColor: colors.gold, padding: spacing.md,
     borderRadius: 8, alignItems: 'center', justifyContent: 'center',
   },
 });

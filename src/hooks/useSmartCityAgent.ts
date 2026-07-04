@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useCityStore } from '../stores/cityStore';
 import { fetchNearbyInfrastructure, formatInfrastructureForPrompt } from '../lib/osmContext';
+import { geocodeLocation } from '../lib/geocode';
+import { buildSceneFromFeatures, SceneObject } from '../lib/geoTo3d';
 import { GEMINI_API_KEY } from '@env';
 
 export interface Message {
@@ -8,6 +10,10 @@ export interface Message {
   role: 'user' | 'agent';
   text: string;
   timestamp: Date;
+  sceneObjects?: SceneObject[];
+  latitude?: number;
+  longitude?: number;
+  features?: any[];
 }
 
 export function useSmartCityAgent(initialComplaint?: any) {
@@ -20,7 +26,7 @@ export function useSmartCityAgent(initialComplaint?: any) {
     const defaultMsg: Message = {
       id: '1',
       role: 'agent',
-      text: `🏙️ Hello! I am Nexy, your Smart City AI Assistant for ${cityName}. Tell me the issue and the exact location (e.g. "potholes near Hill Road, Bandra") and I'll suggest a plan.`,
+      text: `🏙️ Hello! I am Nexy, your Smart City AI Assistant for ${cityName}. Tell me the issue and the exact location (e.g. "potholes near Hill Road, Bandra") and I will suggest a plan.`,
       timestamp: new Date(),
     };
 
@@ -30,7 +36,7 @@ export function useSmartCityAgent(initialComplaint?: any) {
         {
           id: 'context',
           role: 'agent',
-          text: `🔍 Loaded complaint: "${initialComplaint.title}" (${initialComplaint.category}, ${initialComplaint.ward || 'no ward set'}). Can you confirm the exact location/landmark so I can suggest a plan?`,
+          text: `🔍 Loaded complaint: "${initialComplaint.title}" (${initialComplaint.category}, ${initialComplaint.ward || 'no ward set'}). Can you confirm the exact location or landmark so I can suggest a plan?`,
           timestamp: new Date(),
         }
       ];
@@ -38,6 +44,7 @@ export function useSmartCityAgent(initialComplaint?: any) {
 
     return [defaultMsg];
   });
+
   const [loading, setLoading] = useState(false);
 
   const sendMessage = async (text: string, complaint?: any) => {
@@ -55,13 +62,13 @@ export function useSmartCityAgent(initialComplaint?: any) {
       .map(m => m.text)
       .join(' ');
 
-    const hasLocation = /(road|street|lane|avenue|sector|colony|nagar|block|ward|junction|near|at |in )/i.test(fullConversation);
+    const hasLocation = /(road|street|lane|avenue|sector|colony|nagar|block|ward|junction|near|at |in |marg|chowk|bazar|bazaar)/i.test(fullConversation);
 
     if (!hasLocation) {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'agent',
-        text: `📍 Could you tell me the specific street, landmark, or area name? I need that to give an accurate plan for ${cityName}.`,
+        text: `📍 Please specify which street, road, or landmark you are referring to so I can give you an accurate plan for ${cityName}.`,
         timestamp: new Date(),
       }]);
       setLoading(false);
@@ -70,29 +77,67 @@ export function useSmartCityAgent(initialComplaint?: any) {
 
     try {
       let infrastructureContext = '';
-      if (complaint?.latitude && complaint?.longitude) {
-        const features = await fetchNearbyInfrastructure(complaint.latitude, complaint.longitude);
+      let sceneObjects: SceneObject[] = [];
+      let resolvedLat = complaint?.latitude;
+      let resolvedLng = complaint?.longitude;
+      let resolvedFeatures: any[] = [];
+      let geocodeFailed = false;
+
+      if (!resolvedLat || !resolvedLng) {
+        const locationMatch = text.match(/(?:near|at|in|on)\s+([a-zA-Z0-9\s]+?)(?:\.|,|$)/i)
+          || text.match(/([a-zA-Z\s]+(?:road|rd|marg|lane|nagar|chowk|street|st))/i);
+
+        const locationQuery = locationMatch ? locationMatch[1].trim() : text.trim();
+        console.log('Geocoding:', locationQuery);
+        const geocoded = await geocodeLocation(locationQuery, cityName);
+
+        if (geocoded) {
+          resolvedLat = geocoded.lat;
+          resolvedLng = geocoded.lng;
+          console.log('Geocoded to:', resolvedLat, resolvedLng);
+        } else {
+          geocodeFailed = true;
+          console.log('Geocoding failed for:', locationQuery);
+        }
+      }
+
+      if (resolvedLat && resolvedLng) {
+        console.log('Fetching OSM data for', resolvedLat, resolvedLng);
+        const features = await fetchNearbyInfrastructure(resolvedLat, resolvedLng);
+        resolvedFeatures = features;
+        console.log('OSM features found:', features.length);
         infrastructureContext = formatInfrastructureForPrompt(features);
+        sceneObjects = buildSceneFromFeatures(resolvedLat, resolvedLng, features);
       }
 
       const conversationHistory = [...messages, userMsg]
         .map(m => `${m.role === 'user' ? 'Citizen' : 'Agent'}: ${m.text}`)
         .join('\n');
 
-      const prompt = `You are a Smart City AI Agent for ${cityName}, Maharashtra, India. Continue this conversation naturally, remembering what was already discussed. Do not repeat the same problem analysis if it was already given — instead answer the citizen's latest message directly.
+      const prompt = `You are Nexy, a Smart City AI Agent for ${cityName}, India.
 
-IMPORTANT: You are a text-only assistant. You CANNOT send emails, register complaints with BMC, or contact anyone. NEVER ask for the citizen's email or phone number, and NEVER claim you will "send" or "email" anything. Instead, tell them to use the app's Report tab to officially submit a complaint, since that is the only real action available.
+RULES:
+- Write in plain text only. No asterisks or markdown symbols.
+- If the citizen misspells a location, interpret it intelligently and proceed.
+- You cannot send emails or register complaints directly. Never ask for email or phone.
+- Write exactly 3 numbered action steps. Each step is one short sentence under 20 words. Complete all 3 steps fully.
+- Every sentence must end with a full stop.
+- Use real street or building names from the OSM data below if available.
+- After step 3, write this exact sentence: "Use the Report tab in this app to submit your complaint officially."
+- Do not write anything after that final sentence.
 
-${infrastructureContext ? `${infrastructureContext}\n\nWhen suggesting any construction or repair plan, you MUST take this real nearby infrastructure into account by name where possible. Do not propose demolishing or routing through existing buildings. If no infrastructure data is available, clearly state your plan is generic and recommend an on-site survey before construction.\n` : ''}
+${infrastructureContext ? `Nearby infrastructure from OpenStreetMap:\n${infrastructureContext}\n` : ''}
+${geocodeFailed ? `Note: Location could not be precisely mapped. Use general area context.\n` : ''}
 
-This complaint is specifically in the ${complaint?.ward || 'unspecified'} ward, category "${complaint?.category || 'general'}". Tailor your plan to this exact ward and category combination rather than giving a city-wide generic answer — reference the ward name explicitly in your response.
+Ward: ${complaint?.ward || 'general area'}
+Category: ${complaint?.category || 'general'}
 
-Conversation so far:
+Conversation:
 ${conversationHistory}
 
-${complaint ? `Linked complaint: ${complaint.title}, category ${complaint.category}.` : ''}
+${complaint ? `Complaint: ${complaint.title}, ${complaint.category}.` : ''}
 
-Keep your reply concise, under 150 words, and directly address the citizen's most recent message. Do NOT use markdown formatting like asterisks, bold, or bullet symbols — write in plain text with simple numbered steps using "1." "2." "3." and normal line breaks only.`;
+Write steps 1, 2, 3 then the Report tab sentence. Complete all 3 steps:`;
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
@@ -101,7 +146,16 @@ Keep your reply concise, under 150 words, and directly address the citizen's mos
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+            generationConfig: {
+              temperature: 0.6,
+              maxOutputTokens: 1024,
+            },
+            safetySettings: [
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            ],
           }),
         }
       );
@@ -118,13 +172,18 @@ Keep your reply concise, under 150 words, and directly address the citizen's mos
         role: 'agent',
         text: answer,
         timestamp: new Date(),
+        sceneObjects: sceneObjects.length > 0 ? sceneObjects : undefined,
+        latitude: resolvedLat,
+        longitude: resolvedLng,
+        features: resolvedFeatures.length > 0 ? resolvedFeatures : undefined,
       }]);
+
     } catch (e: any) {
       console.log('Smart city agent call failed:', e.message);
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'agent',
-        text: `⚠️ I couldn't reach the planning service right now (${e.message || 'connection issue'}). Please try again in a moment.`,
+        text: `⚠️ Could not reach the planning service right now. Please try again in a moment.`,
         timestamp: new Date(),
       }]);
     } finally {
